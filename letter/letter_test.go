@@ -4,11 +4,28 @@ import (
 	"copilotiq/postgrid-client-golang/contact"
 	"encoding/json"
 	"github.com/jgroeneveld/trial/assert"
+	"github.com/joho/godotenv"
 	"github.com/nsf/jsondiff"
+	"log"
+	"os"
 
 	"testing"
 	"time"
 )
+
+const ApiKeyEnvKey = "POST_GRID_API_KEY"
+
+func TestMain(m *testing.M) {
+	setup()
+	m.Run()
+}
+
+func setup() {
+	err := godotenv.Load("../.env")
+	if err != nil {
+		log.Fatalf("Unable to load .env file: %s", err)
+	}
+}
 
 func TestCreateReq(t *testing.T) {
 	expected :=
@@ -45,40 +62,9 @@ func TestCreateReq(t *testing.T) {
     }
 }
 	`
-	input := CreateReq{
-		Color:        false,
-		MailingClass: "first_class",
-		Template:     "template_12eCCX5GGG8cHfisGf6McD",
-		From: contact.Contact{
-			AddressLine1:    "300 Doheny Dr",
-			AddressLine2:    "Room 1234",
-			City:            "Los Angeles",
-			CountryCode:     "US",
-			FirstName:       "Four Seasons Hotel",
-			LastName:        "Los Angeles At Beverly Hills",
-			PostalOrZip:     "90048",
-			ProvinceOrState: "CA",
-		},
-		To: contact.Contact{
-			AddressLine1:    "9250 Beverly Blvd",
-			AddressLine2:    "Garage 32",
-			City:            "Beverly Hills",
-			CountryCode:     "US",
-			FirstName:       "Mercedes-Benz",
-			LastName:        "of Beverly Hills",
-			PostalOrZip:     "90210",
-			ProvinceOrState: "CA",
-		},
-		MergeVariables: MergeVariables{
-			"date":     "May 1st, 2023",
-			"float":    92.12,
-			"greeting": "Hello GoLang,",
-			"int":      42,
-		},
-	}
 
 	t.Run("verify CreateReq marshals to expected", func(t *testing.T) {
-		jsonBytes, err := json.Marshal(&input)
+		jsonBytes, err := json.Marshal(GenerateCreateReq())
 		assert.Nil(t, err)
 		opts := jsondiff.DefaultConsoleOptions()
 		diff, _ := jsondiff.Compare([]byte(expected), jsonBytes, &opts)
@@ -110,7 +96,7 @@ func TestCreateRes(t *testing.T) {
         "postalOrZip": "90048",
         "provinceOrState": "CA"
     },
-    "mailingClass": "first_class",
+    "mailingClass": "standard_class",
     "mergeVariables": {
         "date": "May 1st, 2023",
         "float": 92.12,
@@ -140,7 +126,67 @@ func TestCreateRes(t *testing.T) {
 }
 `
 
-	input := CreateRes{
+	t.Run("verify CreateRes marshals to expected", func(t *testing.T) {
+		jsonBytes, err := json.Marshal(GenerateCreateRes())
+		assert.Nil(t, err)
+		opts := jsondiff.DefaultConsoleOptions()
+		diff, _ := jsondiff.Compare([]byte(expected), jsonBytes, &opts)
+		assert.Equal(t, int(jsondiff.FullMatch), int(diff))
+	})
+}
+
+func TestCreate(t *testing.T) {
+	apiKey := os.Getenv(ApiKeyEnvKey)
+	assert.NotEqual(t, "", apiKey)
+	if apiKey == "" {
+		t.FailNow()
+	}
+
+	client := New(apiKey)
+
+	t.Run("verify known response from known input", func(t *testing.T) {
+		res, err := client.CreateLetter(GenerateCreateReq())
+		assert.Nil(t, err)
+		assert.Equal(t, GenerateCreateRes(), res)
+	})
+}
+
+func GenerateCreateReq() *CreateReq {
+	return &CreateReq{
+		Color:        false,
+		MailingClass: FirstClass,
+		Template:     "template_12eCCX5GGG8cHfisGf6McD",
+		From: contact.Contact{
+			AddressLine1:    "300 Doheny Dr",
+			AddressLine2:    "Room 1234",
+			City:            "Los Angeles",
+			CountryCode:     "US",
+			FirstName:       "Four Seasons Hotel",
+			LastName:        "Los Angeles At Beverly Hills",
+			PostalOrZip:     "90048",
+			ProvinceOrState: "CA",
+		},
+		To: contact.Contact{
+			AddressLine1:    "9250 Beverly Blvd",
+			AddressLine2:    "Garage 32",
+			City:            "Beverly Hills",
+			CountryCode:     "US",
+			FirstName:       "Mercedes-Benz",
+			LastName:        "of Beverly Hills",
+			PostalOrZip:     "90210",
+			ProvinceOrState: "CA",
+		},
+		MergeVariables: MergeVariables{
+			"date":     "May 1st, 2023",
+			"float":    92.12,
+			"greeting": "Hello GoLang,",
+			"int":      42,
+		},
+	}
+}
+
+func GenerateCreateRes() *CreateRes {
+	return &CreateRes{
 		AddressPlacement: "top_first_page",
 		Color:            false,
 		CreatedAt:        time.Date(2023, time.May, 11, 18, 52, 36, 684000000, time.UTC),
@@ -148,7 +194,7 @@ func TestCreateRes(t *testing.T) {
 		EnvelopeType:     "standard_double_window",
 		ID:               "letter_nUhyevBaQfMByda8bCmMSk",
 		Live:             false,
-		MailingClass:     "first_class",
+		MailingClass:     StandardClass,
 		Object:           "letter",
 		SendDate:         time.Date(2023, time.May, 11, 18, 52, 36, 680000000, time.UTC),
 		Size:             "us_letter",
@@ -190,11 +236,4 @@ func TestCreateRes(t *testing.T) {
 			ProvinceOrState: "CA",
 		},
 	}
-	t.Run("verify CreateRes marshals to expected", func(t *testing.T) {
-		jsonBytes, err := json.Marshal(&input)
-		assert.Nil(t, err)
-		opts := jsondiff.DefaultConsoleOptions()
-		diff, _ := jsondiff.Compare([]byte(expected), jsonBytes, &opts)
-		assert.Equal(t, int(jsondiff.FullMatch), int(diff))
-	})
 }

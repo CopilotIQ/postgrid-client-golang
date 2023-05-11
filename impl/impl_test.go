@@ -1,4 +1,4 @@
-package main
+package impl
 
 import (
 	"github.com/jgroeneveld/trial/assert"
@@ -48,8 +48,4 @@ func TestNew(t *testing.T) {
 		pg := New(apiKey3)
 		assert.False(t, pg.live)
 	})
-}
-
-func TestCreateLetter(t *testing.T) {
-
 }
