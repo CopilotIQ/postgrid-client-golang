@@ -20,7 +20,7 @@ func TestContact(t *testing.T) {
         "country": "UNITED STATES",
         "countryCode": "US",
         "firstName": "Four Seasons Hotel",
-        "lastName": "LOS ANGELES At Beverly Hills",
+        "lastName": "LOS ANGELES At BEVERLY HILLS",
         "postalOrZip": "90048",
         "provinceOrState": "CA"
     }
@@ -35,7 +35,7 @@ func TestContact(t *testing.T) {
 			CountryCode:     "US",
 			FirstName:       "Four Seasons Hotel",
 			ID:              "contact_6abGybQegaSeQ5cknTy9yV",
-			LastName:        "LOS ANGELES At Beverly Hills",
+			LastName:        "LOS ANGELES At BEVERLY HILLS",
 			Object:          "contact",
 			PostalOrZip:     "90048",
 			ProvinceOrState: "CA",
@@ -59,7 +59,7 @@ func TestContact(t *testing.T) {
         "country": "UNITED STATES",
         "countryCode": "US",
         "firstName": "Mercedes-Benz",
-        "lastName": "of Beverly Hills",
+        "lastName": "of BEVERLY HILLS",
         "postalOrZip": "90210",
         "provinceOrState": "CA"
     }
@@ -74,7 +74,7 @@ func TestContact(t *testing.T) {
 			CountryCode:     "US",
 			FirstName:       "Mercedes-Benz",
 			ID:              "contact_eKayBKrC356AZPNifvfrAL",
-			LastName:        "of Beverly Hills",
+			LastName:        "of BEVERLY HILLS",
 			Object:          "contact",
 			PostalOrZip:     "90210",
 			ProvinceOrState: "CA",

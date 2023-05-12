@@ -29,11 +29,12 @@ func ResToType(code int, reader io.Reader, successType interface{}) *postgrid.AP
 	}
 
 	var jsonErr error
-	var isError bool
+	var doReturnError bool
 	var serverErr postgrid.APIError
 	if code >= http.StatusBadRequest {
-		isError = true
+		doReturnError = true
 		jsonErr = json.Unmarshal(resBody, &serverErr)
+		serverErr.Code = code
 	} else {
 		jsonErr = json.Unmarshal(resBody, &successType)
 	}
@@ -42,7 +43,7 @@ func ResToType(code int, reader io.Reader, successType interface{}) *postgrid.AP
 		return postgrid.BuildError(500, fmt.Sprintf("error unmarshalling res [%+v]", string(resBody)), "client_validation_error")
 	}
 
-	if isError {
+	if doReturnError {
 		return &serverErr
 	}
 

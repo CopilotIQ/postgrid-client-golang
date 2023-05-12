@@ -6,6 +6,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/nsf/jsondiff"
 	"log"
+	"net/http"
 	"os"
 	"reflect"
 
@@ -45,7 +46,7 @@ func TestCreateReq(t *testing.T) {
 {
     "from": {
         "firstName": "Four Seasons Hotel",
-        "lastName": "LOS ANGELES At Beverly Hills",
+        "lastName": "LOS ANGELES At BEVERLY HILLS",
         "addressLine1": "300 DOHENY DR",
         "addressLine2": "ROOM 1234",
         "city": "LOS ANGELES",
@@ -55,10 +56,10 @@ func TestCreateReq(t *testing.T) {
     },
     "to": {
         "firstName": "Mercedes-Benz",
-        "lastName": "of Beverly Hills",
-        "addressLine1": "9250 Beverly Blvd",
-        "addressLine2": "Garage 32",
-        "city": "Beverly Hills",
+        "lastName": "of BEVERLY HILLS",
+        "addressLine1": "9250 BEVERLY BLVD",
+        "addressLine2": "GARAGE 32",
+        "city": "BEVERLY HILLS",
         "countryCode": "US",
         "postalOrZip": "90210",
         "provinceOrState": "CA"
@@ -104,7 +105,7 @@ func TestCreateRes(t *testing.T) {
         "country": "UNITED STATES",
         "countryCode": "US",
         "firstName": "Four Seasons Hotel",
-        "lastName": "LOS ANGELES At Beverly Hills",
+        "lastName": "LOS ANGELES At BEVERLY HILLS",
         "postalOrZip": "90048",
         "provinceOrState": "CA"
     },
@@ -129,7 +130,7 @@ func TestCreateRes(t *testing.T) {
         "country": "UNITED STATES",
         "countryCode": "US",
         "firstName": "Mercedes-Benz",
-        "lastName": "of Beverly Hills",
+        "lastName": "of BEVERLY HILLS",
         "postalOrZip": "90210",
         "provinceOrState": "CA"
     },
@@ -150,9 +151,31 @@ func TestCreateRes(t *testing.T) {
 func TestCreate(t *testing.T) {
 	t.Run("verify known response from known input", func(t *testing.T) {
 		cReq := GenerateCreateReq()
-		cRes, err := TestClient.CreateLetter(cReq)
-		assert.Nil(t, err)
+		cRes, apiErr := TestClient.CreateLetter(cReq)
+		assert.True(t, reflect.ValueOf(apiErr).IsNil())
 		VerifyCreateReqVsCreateRes(t, cReq, cRes)
+	})
+	t.Run("verify error when address cannot be validated", func(t *testing.T) {
+		cReq := GenerateCreateReq()
+		cReq.To.CountryCode = "FFF"
+		cRes, apiErr := TestClient.CreateLetter(cReq)
+		assert.False(t, reflect.ValueOf(apiErr).IsNil())
+		assert.True(t, reflect.ValueOf(cRes).IsNil())
+		assert.Equal(t, http.StatusBadRequest, apiErr.Code)
+		assert.Equal(t, "error", apiErr.Object)
+		assert.Equal(t, "Failed to satisfy the following constraints: 'to' is not a valid contact or contact ID.", apiErr.Error.Message)
+		assert.Equal(t, "validation_error", apiErr.Error.Type)
+	})
+	t.Run("verify error when api key is invalid", func(t *testing.T) {
+		badClient := New("12345")
+		cReq := GenerateCreateReq()
+		cRes, apiErr := badClient.CreateLetter(cReq)
+		assert.False(t, reflect.ValueOf(apiErr).IsNil())
+		assert.True(t, reflect.ValueOf(cRes).IsNil())
+		assert.Equal(t, http.StatusUnauthorized, apiErr.Code)
+		assert.Equal(t, "error", apiErr.Object)
+		assert.Equal(t, "Invalid API key 12345", apiErr.Error.Message)
+		assert.Equal(t, "invalid_api_key_error", apiErr.Error.Type)
 	})
 }
 
@@ -167,17 +190,17 @@ func GenerateCreateReq() *CreateReq {
 			City:            "LOS ANGELES",
 			CountryCode:     "US",
 			FirstName:       "Four Seasons Hotel",
-			LastName:        "LOS ANGELES At Beverly Hills",
+			LastName:        "LOS ANGELES At BEVERLY HILLS",
 			PostalOrZip:     "90048",
 			ProvinceOrState: "CA",
 		},
 		To: Contact{
-			AddressLine1:    "9250 Beverly Blvd",
-			AddressLine2:    "Garage 32",
-			City:            "Beverly Hills",
+			AddressLine1:    "9250 BEVERLY BLVD",
+			AddressLine2:    "GARAGE 32",
+			City:            "BEVERLY HILLS",
 			CountryCode:     "US",
 			FirstName:       "Mercedes-Benz",
-			LastName:        "of Beverly Hills",
+			LastName:        "of BEVERLY HILLS",
 			PostalOrZip:     "90210",
 			ProvinceOrState: "CA",
 		},
@@ -221,7 +244,7 @@ func GenerateCreateRes() *CreateRes {
 			CountryCode:     "US",
 			FirstName:       "Four Seasons Hotel",
 			ID:              "contact_6abGybQegaSeQ5cknTy9yV",
-			LastName:        "LOS ANGELES At Beverly Hills",
+			LastName:        "LOS ANGELES At BEVERLY HILLS",
 			Object:          "contact",
 			PostalOrZip:     "90048",
 			ProvinceOrState: "CA",
@@ -235,7 +258,7 @@ func GenerateCreateRes() *CreateRes {
 			CountryCode:     "US",
 			FirstName:       "Mercedes-Benz",
 			ID:              "contact_eKayBKrC356AZPNifvfrAL",
-			LastName:        "of Beverly Hills",
+			LastName:        "of BEVERLY HILLS",
 			Object:          "contact",
 			PostalOrZip:     "90210",
 			ProvinceOrState: "CA",
@@ -249,7 +272,7 @@ func VerifyCreateReqVsCreateRes(t *testing.T, cReq *CreateReq, cRes *CreateRes) 
 	assert.Equal(t, string(cReq.MailingClass), cRes.MailingClass)
 	assert.MustBeDeepEqual(t, cReq.MergeVariables, cRes.MergeVariables)
 	assert.Equal(t, cReq.Template, cRes.Template)
-	assert.True(t, reflect.DeepEqual(cReq.To, cRes.To))
+	VerifyBeforeContactVsAfterContact(t, &cReq.To, &cRes.To)
 }
 
 func VerifyBeforeContactVsAfterContact(t *testing.T, beforeC *Contact, afterC *Contact) {
@@ -268,5 +291,6 @@ func VerifyBeforeContactVsAfterContact(t *testing.T, beforeC *Contact, afterC *C
 	assert.Equal(t, "", beforeC.Object)
 	assert.Equal(t, "UNITED STATES", afterC.Country)
 	assert.Equal(t, "contact", afterC.Object)
+	assert.Equal(t, "verified", afterC.AddressStatus)
 	assert.Equal(t, 30, len(afterC.ID))
 }
