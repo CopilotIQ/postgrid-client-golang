@@ -49,6 +49,7 @@ func New(apiKey string) *Client {
 	pg := impl.New(apiKey)
 	return &Client{
 		baseURL: BaseUrl,
+		client:  http.DefaultClient,
 		pg:      pg,
 	}
 }
@@ -56,6 +57,21 @@ func New(apiKey string) *Client {
 type Client struct {
 	baseURL string
 	pg      *impl.PostGrid
+	client  *http.Client
+}
+
+func (c *Client) Post(req *http.Request) (*http.Response, *util.APIError) {
+	headers := http.Header{}
+	headers.Set("Content-Type", "application/json")
+	headers.Set("x-api-key", c.pg.APIKey())
+
+	req.Header = headers
+	res, err := c.client.Do(req)
+	if err != nil {
+		return nil, util.BuildError(500, fmt.Sprintf("error sending req [%+v]", req), "client_transmit_error")
+	}
+
+	return res, nil
 }
 
 func (c *Client) CreateLetter(req *CreateReq) (*CreateRes, *util.APIError) {
@@ -69,16 +85,13 @@ func (c *Client) CreateLetter(req *CreateReq) (*CreateRes, *util.APIError) {
 		return nil, util.BuildError(500, fmt.Sprintf("error generating POST req [%+v] for req [%+v]", err, req), "client_internal_error")
 	}
 
-	ctHeader := http.Header{}
-	postReq.Header["Content-Type"] = "application/json"
-
-	resp, postErr := http.Post(c.baseURL, "application/json", bodyReader)
+	res, postErr := c.Post(postReq)
 	if postErr != nil {
-		return nil, util.BuildError(500, fmt.Sprintf("error sending req [%+v]", req), "client_transmit_error")
+		return nil, postErr
 	}
 
 	var createRes CreateRes
-	resErr := util.ResToType(resp.StatusCode, resp.Body, &createRes)
+	resErr := util.ResToType(res.StatusCode, res.Body, &createRes)
 	if resErr != nil {
 		return nil, resErr
 	}

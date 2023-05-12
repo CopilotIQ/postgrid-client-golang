@@ -8,6 +8,7 @@ import (
 	"github.com/nsf/jsondiff"
 	"log"
 	"os"
+	"reflect"
 
 	"testing"
 	"time"
@@ -52,7 +53,7 @@ func TestCreateReq(t *testing.T) {
         "provinceOrState": "CA"
     },
     "mailingClass": "first_class",
-    "template": "template_12eCCX5GGG8cHfisGf6McD",
+    "template": "template_eeiS9Gc4DyKyDqxSoKtdfw",
     "color": false,
     "mergeVariables": {
         "date": "May 1st, 2023",
@@ -106,7 +107,7 @@ func TestCreateRes(t *testing.T) {
     "sendDate": "2023-05-11T18:52:36.68Z",
     "size": "us_letter",
     "status": "ready",
-    "template": "template_12eCCX5GGG8cHfisGf6McD",
+    "template": "template_eeiS9Gc4DyKyDqxSoKtdfw",
     "to": {
         "id": "contact_eKayBKrC356AZPNifvfrAL",
         "object": "contact",
@@ -145,9 +146,10 @@ func TestCreate(t *testing.T) {
 	client := New(apiKey)
 
 	t.Run("verify known response from known input", func(t *testing.T) {
-		res, err := client.CreateLetter(GenerateCreateReq())
+		cReq := GenerateCreateReq()
+		cRes, err := client.CreateLetter(cReq)
 		assert.Nil(t, err)
-		assert.Equal(t, GenerateCreateRes(), res)
+		VerifyCreateReqVsCreateRes(t, cReq, cRes)
 	})
 }
 
@@ -155,7 +157,7 @@ func GenerateCreateReq() *CreateReq {
 	return &CreateReq{
 		Color:        false,
 		MailingClass: FirstClass,
-		Template:     "template_12eCCX5GGG8cHfisGf6McD",
+		Template:     "template_eeiS9Gc4DyKyDqxSoKtdfw",
 		From: contact.Contact{
 			AddressLine1:    "300 Doheny Dr",
 			AddressLine2:    "Room 1234",
@@ -199,7 +201,7 @@ func GenerateCreateRes() *CreateRes {
 		SendDate:         time.Date(2023, time.May, 11, 18, 52, 36, 680000000, time.UTC),
 		Size:             "us_letter",
 		Status:           "ready",
-		Template:         "template_12eCCX5GGG8cHfisGf6McD",
+		Template:         "template_eeiS9Gc4DyKyDqxSoKtdfw",
 		UpdatedAt:        time.Date(2023, time.May, 11, 18, 52, 36, 684000000, time.UTC),
 		MergeVariables: MergeVariables{
 			"date":     "May 1st, 2023",
@@ -236,4 +238,13 @@ func GenerateCreateRes() *CreateRes {
 			ProvinceOrState: "CA",
 		},
 	}
+}
+
+func VerifyCreateReqVsCreateRes(t *testing.T, cReq *CreateReq, cRes *CreateRes) {
+	assert.Equal(t, cReq.Color, cRes.Color)
+	assert.True(t, reflect.DeepEqual(cReq.From, cRes.From))
+	assert.Equal(t, string(cReq.MailingClass), cRes.MailingClass)
+	assert.True(t, reflect.DeepEqual(cReq.MergeVariables, cRes.MergeVariables))
+	assert.Equal(t, cReq.Template, cRes.Template)
+	assert.True(t, reflect.DeepEqual(cReq.To, cRes.To))
 }

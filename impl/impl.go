@@ -21,6 +21,10 @@ func New(apiKey string) *PostGrid {
 	}
 }
 
+func (pg *PostGrid) APIKey() string {
+	return pg.apiKey
+}
+
 func (pg *PostGrid) IsLive() bool {
 	return pg.live
 }

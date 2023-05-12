@@ -71,8 +71,10 @@ func ResToType(code int, reader io.Reader, successType interface{}) *APIError {
 	}
 
 	var jsonErr error
+	var isError bool
+	var serverErr APIError
 	if code >= http.StatusBadRequest {
-		var serverErr APIError
+		isError = true
 		jsonErr = json.Unmarshal(resBody, &serverErr)
 	} else {
 		jsonErr = json.Unmarshal(resBody, &successType)
@@ -87,6 +89,10 @@ func ResToType(code int, reader io.Reader, successType interface{}) *APIError {
 			},
 			Object: "error",
 		}
+	}
+
+	if isError {
+		return &serverErr
 	}
 
 	return nil
