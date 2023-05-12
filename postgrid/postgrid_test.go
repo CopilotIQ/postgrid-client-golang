@@ -1,4 +1,4 @@
-package impl
+package postgrid
 
 import (
 	"github.com/jgroeneveld/trial/assert"

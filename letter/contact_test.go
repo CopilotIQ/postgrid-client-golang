@@ -1,4 +1,4 @@
-package contact
+package letter
 
 import (
 	"encoding/json"
@@ -20,7 +20,7 @@ func TestContact(t *testing.T) {
         "country": "UNITED STATES",
         "countryCode": "US",
         "firstName": "Four Seasons Hotel",
-        "lastName": "Los Angeles At Beverly Hills",
+        "lastName": "LOS ANGELES At Beverly Hills",
         "postalOrZip": "90048",
         "provinceOrState": "CA"
     }
@@ -35,7 +35,7 @@ func TestContact(t *testing.T) {
 			CountryCode:     "US",
 			FirstName:       "Four Seasons Hotel",
 			ID:              "contact_6abGybQegaSeQ5cknTy9yV",
-			LastName:        "Los Angeles At Beverly Hills",
+			LastName:        "LOS ANGELES At Beverly Hills",
 			Object:          "contact",
 			PostalOrZip:     "90048",
 			ProvinceOrState: "CA",

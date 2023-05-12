@@ -1,7 +1,6 @@
 package letter
 
 import (
-	"copilotiq/postgrid-client-golang/contact"
 	"encoding/json"
 	"github.com/jgroeneveld/trial/assert"
 	"github.com/joho/godotenv"
@@ -16,6 +15,8 @@ import (
 
 const ApiKeyEnvKey = "POST_GRID_API_KEY"
 
+var TestClient *Client
+
 func TestMain(m *testing.M) {
 	setup()
 	m.Run()
@@ -26,6 +27,16 @@ func setup() {
 	if err != nil {
 		log.Fatalf("Unable to load .env file: %s", err)
 	}
+
+	apiKey := os.Getenv(ApiKeyEnvKey)
+	if apiKey == "" {
+		log.Fatalf("Cannot proceed when apiKey is the empty string [%s]", apiKey)
+	}
+
+	TestClient = New(apiKey)
+	if TestClient.pg.IsLive() {
+		log.Fatalf("Cannot proceed when API key is live [%s]", apiKey)
+	}
 }
 
 func TestCreateReq(t *testing.T) {
@@ -34,10 +45,10 @@ func TestCreateReq(t *testing.T) {
 {
     "from": {
         "firstName": "Four Seasons Hotel",
-        "lastName": "Los Angeles At Beverly Hills",
-        "addressLine1": "300 Doheny Dr",
-        "addressLine2": "Room 1234",
-        "city": "Los Angeles",
+        "lastName": "LOS ANGELES At Beverly Hills",
+        "addressLine1": "300 DOHENY DR",
+        "addressLine2": "ROOM 1234",
+        "city": "LOS ANGELES",
         "countryCode": "US",
         "postalOrZip": "90048",
         "provinceOrState": "CA"
@@ -93,7 +104,7 @@ func TestCreateRes(t *testing.T) {
         "country": "UNITED STATES",
         "countryCode": "US",
         "firstName": "Four Seasons Hotel",
-        "lastName": "Los Angeles At Beverly Hills",
+        "lastName": "LOS ANGELES At Beverly Hills",
         "postalOrZip": "90048",
         "provinceOrState": "CA"
     },
@@ -137,17 +148,9 @@ func TestCreateRes(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	apiKey := os.Getenv(ApiKeyEnvKey)
-	assert.NotEqual(t, "", apiKey)
-	if apiKey == "" {
-		t.FailNow()
-	}
-
-	client := New(apiKey)
-
 	t.Run("verify known response from known input", func(t *testing.T) {
 		cReq := GenerateCreateReq()
-		cRes, err := client.CreateLetter(cReq)
+		cRes, err := TestClient.CreateLetter(cReq)
 		assert.Nil(t, err)
 		VerifyCreateReqVsCreateRes(t, cReq, cRes)
 	})
@@ -158,17 +161,17 @@ func GenerateCreateReq() *CreateReq {
 		Color:        false,
 		MailingClass: FirstClass,
 		Template:     "template_eeiS9Gc4DyKyDqxSoKtdfw",
-		From: contact.Contact{
-			AddressLine1:    "300 Doheny Dr",
-			AddressLine2:    "Room 1234",
-			City:            "Los Angeles",
+		From: Contact{
+			AddressLine1:    "300 DOHENY DR",
+			AddressLine2:    "ROOM 1234",
+			City:            "LOS ANGELES",
 			CountryCode:     "US",
 			FirstName:       "Four Seasons Hotel",
-			LastName:        "Los Angeles At Beverly Hills",
+			LastName:        "LOS ANGELES At Beverly Hills",
 			PostalOrZip:     "90048",
 			ProvinceOrState: "CA",
 		},
-		To: contact.Contact{
+		To: Contact{
 			AddressLine1:    "9250 Beverly Blvd",
 			AddressLine2:    "Garage 32",
 			City:            "Beverly Hills",
@@ -182,7 +185,7 @@ func GenerateCreateReq() *CreateReq {
 			"date":     "May 1st, 2023",
 			"float":    92.12,
 			"greeting": "Hello GoLang,",
-			"int":      42,
+			"int":      float64(42), // TODO(Canavan): response upgrades 42 to float64 which causes reflect.DeepEqual to break
 		},
 	}
 }
@@ -207,9 +210,9 @@ func GenerateCreateRes() *CreateRes {
 			"date":     "May 1st, 2023",
 			"float":    92.12,
 			"greeting": "Hello GoLang,",
-			"int":      42,
+			"int":      float64(42),
 		},
-		From: contact.Contact{
+		From: Contact{
 			AddressLine1:    "300 DOHENY DR",
 			AddressLine2:    "ROOM 1234",
 			AddressStatus:   "verified",
@@ -218,12 +221,12 @@ func GenerateCreateRes() *CreateRes {
 			CountryCode:     "US",
 			FirstName:       "Four Seasons Hotel",
 			ID:              "contact_6abGybQegaSeQ5cknTy9yV",
-			LastName:        "Los Angeles At Beverly Hills",
+			LastName:        "LOS ANGELES At Beverly Hills",
 			Object:          "contact",
 			PostalOrZip:     "90048",
 			ProvinceOrState: "CA",
 		},
-		To: contact.Contact{
+		To: Contact{
 			AddressLine1:    "9250 BEVERLY BLVD",
 			AddressLine2:    "GARAGE 32",
 			AddressStatus:   "verified",
@@ -242,9 +245,28 @@ func GenerateCreateRes() *CreateRes {
 
 func VerifyCreateReqVsCreateRes(t *testing.T, cReq *CreateReq, cRes *CreateRes) {
 	assert.Equal(t, cReq.Color, cRes.Color)
-	assert.True(t, reflect.DeepEqual(cReq.From, cRes.From))
+	VerifyBeforeContactVsAfterContact(t, &cReq.From, &cRes.From)
 	assert.Equal(t, string(cReq.MailingClass), cRes.MailingClass)
-	assert.True(t, reflect.DeepEqual(cReq.MergeVariables, cRes.MergeVariables))
+	assert.MustBeDeepEqual(t, cReq.MergeVariables, cRes.MergeVariables)
 	assert.Equal(t, cReq.Template, cRes.Template)
 	assert.True(t, reflect.DeepEqual(cReq.To, cRes.To))
+}
+
+func VerifyBeforeContactVsAfterContact(t *testing.T, beforeC *Contact, afterC *Contact) {
+	assert.Equal(t, beforeC.AddressLine1, afterC.AddressLine1)
+	assert.Equal(t, beforeC.AddressLine2, afterC.AddressLine2)
+	assert.Equal(t, beforeC.City, afterC.City)
+	assert.Equal(t, beforeC.CountryCode, afterC.CountryCode)
+	assert.Equal(t, beforeC.FirstName, afterC.FirstName)
+	assert.Equal(t, beforeC.LastName, afterC.LastName)
+	assert.Equal(t, beforeC.PostalOrZip, afterC.PostalOrZip)
+	assert.Equal(t, beforeC.ProvinceOrState, afterC.ProvinceOrState)
+
+	assert.Equal(t, "", beforeC.AddressStatus)
+	assert.Equal(t, "", beforeC.Country)
+	assert.Equal(t, "", beforeC.ID)
+	assert.Equal(t, "", beforeC.Object)
+	assert.Equal(t, "UNITED STATES", afterC.Country)
+	assert.Equal(t, "contact", afterC.Object)
+	assert.Equal(t, 30, len(afterC.ID))
 }
